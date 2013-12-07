@@ -14,7 +14,8 @@ time.sleep(2)
 
 def eventloop():
   while True:
-    event = droid.eventWait().result      
+    event = droid.eventWait().result
+    print event     
     if event["name"]=="click":
       id=event["data"]["id"]
       if id=="button1":
@@ -26,39 +27,46 @@ def eventloop():
       elif id=="button3":
         droid.bluetoothWrite("#gd")
 	time.sleep(0.5)
-        readSerial()
+        btRead()
       elif id=="button4":
         droid.bluetoothWrite("#gr")
 	time.sleep(0.5)
-        readSerial()
+        btRead()
       elif id=="button5":
         droid.bluetoothWrite("$sd")
 	time.sleep(0.5)
-        readSerial()
+        btRead()
       elif id=="button6":
 	toSend = "#tt" + droid.fullQueryDetail("editText1").result['text']
         droid.bluetoothWrite(toSend)
 	time.sleep(0.5)
-        readSerial()
+        btRead()
       elif id=="button7":
 	toSend = "#td" + droid.fullQueryDetail("editText1").result['text']
         droid.bluetoothWrite(toSend)
 	time.sleep(0.5)
-        readSerial()
+        btRead()
       elif id=="button8":
         toSend = "#ru" + droid.fullQueryDetail("editText1").result['text']
         droid.bluetoothWrite(toSend)
 	time.sleep(0.5)
-        readSerial()
+        btRead()
       elif id=="button9":
         toSend = "#rd" + droid.fullQueryDetail("editText1").result['text']
         droid.bluetoothWrite(toSend)
 	time.sleep(0.5)
-        readSerial()
+        btRead()
       elif id=="button10":
         droid.bluetoothWrite("#as")
 	time.sleep(0.5)
-        readSerial()
+        btRead()
+      elif id=="togglebutton1":
+        if event["data"]["checked"]=="true":
+	   droid.bluetoothWrite("#as")
+	   print "on"
+        else:
+           droid.bluetoothWrite("#ds")
+	   print "off"
     elif event["name"]=="screen":
       if event["data"]=="destroy":
         return
@@ -72,7 +80,7 @@ layout="""<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/background" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#ff008080">
     <LinearLayout android:layout_width="match_parent" android:layout_marginBottom="8dip" android:layout_marginLeft="10dip" android:layout_marginTop="15dip" android:id="@+id/linearLayout1">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Senseur DMX" android:id="@+id/textViewTitre" android:textStyle="bold" android:textSize="10sp" android:textColor="#000" android:gravity="center_vertical|center_horizontal|center"></TextView>
-        <ToggleButton android:id="@+id/togglebutton1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textOn="Senseur" android:textOff="Senseur" android:checked="true" android:layout_marginLeft="148dip" android:layout_width="74dip" android:gravity="center_vertical|center_horizontal|center" android:onClick="onToggleClicked"></ToggleButton>
+        <ToggleButton android:id="@+id/togglebutton1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textOn="Senseur" android:textOff="Senseur" android:layout_marginLeft="148dip" android:layout_width="74dip" android:gravity="center_vertical|center_horizontal|center" android:onClick="onToggleClicked"></ToggleButton>
     </LinearLayout>
 <View
     android:layout_width="fill_parent"
@@ -101,14 +109,11 @@ layout="""<?xml version="1.0" encoding="utf-8"?>
 """
 
 
-def readSerial():
-  btRead = droid.bluetoothReadLine().result
-  btRead = btRead[btRead.index('#'):]
-  print btRead
-  if btRead == 'error':
-    droid.makeToast("Senseur hors de portee")
-  else:
-    droid.fullSetProperty("editText2","text", btRead)
+def btRead():
+  if droid.bluetoothReadReady().result:
+     btRead = droid.bluetoothReadLine().result
+     btRead = btRead[btRead.index('#')+1:]
+     return btRead
 
 def getBetween(input, limiteGauche, limiteDroite=""):
    if limiteDroite != "":
@@ -119,13 +124,14 @@ def getBetween(input, limiteGauche, limiteDroite=""):
    return output
 
 def readAll():
-  btRead = droid.bluetoothReadLine().result
-  btRead = btRead[btRead.index('#'):]
-  results = parse(btRead)
-  droid.fullSetProperty("editText1","text", results["distance train"])
-  droid.fullSetProperty("editText2","text", results["temps train"])
-  droid.fullSetProperty("editText3","text", results["temps DMX"])
-  droid.fullSetProperty("editText4","text", results["range"])
+  if droid.bluetoothReadReady().result:
+     btRead = droid.bluetoothReadLine().result
+     btRead = btRead[btRead.index('#')+1:]
+     results = parse(btRead)
+     droid.fullSetProperty("editText1","text", results["distance train"])
+     droid.fullSetProperty("editText2","text", results["temps train"])
+     droid.fullSetProperty("editText3","text", results["temps DMX"])
+     droid.fullSetProperty("editText4","text", results["range"])
 
 def parse(input):
    results = {}
@@ -146,11 +152,18 @@ def valider():
    time.sleep(0.05)
    droid.bluetoothWrite("#sr" + droid.fullQueryDetail("editText4").result['text'] + '0')
    time.sleep(0.05)
-   readSerial()
+   btRead()
 
 print layout
 print droid.fullShow(layout)
-print droid.fullQueryDetail("linearLayout3").result
+droid.bluetoothWrite("#gs")
+time.sleep(0.5)
+senseurState = btRead()
+print senseurState
+if senseurState=='1':
+   droid.fullSetProperty("togglebutton1","checked", "true")
+elif senseurState=='0':
+   droid.fullSetProperty("togglebutton1","checked", "false")
 eventloop()
 print droid.fullQuery()
 print "Data entered =",droid.fullQueryDetail("editText1").result
